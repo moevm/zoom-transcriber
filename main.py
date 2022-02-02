@@ -1,13 +1,13 @@
 import json
-from pathlib import Path
 import subprocess
-from argparse import ArgumentParser
 import time
-from typing import NamedTuple
+from argparse import ArgumentParser
 from functools import lru_cache
+from pathlib import Path
+from typing import NamedTuple
 
 import ffmpeg
-from vosk import Model, KaldiRecognizer, SetLogLevel
+from vosk import KaldiRecognizer, Model, SetLogLevel
 
 SetLogLevel(0)
 
@@ -30,25 +30,20 @@ def process_vosk_result(res: dict) -> VoskResult:
     if not (words := res.get("result")):
         return
 
-    return VoskResult(
-        start=words[0]["start"],
-        end=words[-1]["end"],
-        text=res["text"]
-    )
+    return VoskResult(start=words[0]["start"], end=words[-1]["end"], text=res["text"])
 
 
 def process_audiofile(rec: KaldiRecognizer, file_path: str) -> None:
     result: list[VoskResult] = []
-    
+
     _path = Path(file_path).absolute()
-    print(f'Started processing {file_path}')
+    print(f"Started processing {file_path}")
     start = time.perf_counter()
     process: subprocess.Popen = (
-        ffmpeg
-        .input(_path)
+        ffmpeg.input(_path)
         .filter("highpass", f=200)
         .filter("lowpass", f=3000)
-        .output('-', format='s16le', ac=1, ar=16000)
+        .output("-", format="s16le", ac=1, ar=16000)
         .run_async(pipe_stdout=True, pipe_stderr=True, quiet=True)
     )
 
@@ -60,18 +55,25 @@ def process_audiofile(rec: KaldiRecognizer, file_path: str) -> None:
     recognized_data = json.loads(rec.FinalResult())
     result.append(process_vosk_result(recognized_data))
 
-    with open(_path.stem + ".json", "w",encoding='utf-8') as f:
+    with open(_path.stem + ".json", "w", encoding="utf-8") as f:
         json.dump([r._asdict() for r in result], f, ensure_ascii=False, indent=2)
-    
-    print(f'Finished processing {file_path}, time elapsed: {time.perf_counter() - start}s')
-    
+
+    print(
+        f"Finished processing {file_path}, time elapsed: {time.perf_counter() - start}s"
+    )
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--file", type=str, required=True, help="path to audio file")
-    parser.add_argument("--model", type=str, required=False, default="models/vosk-model-small-ru-0.22", help="path to model")
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=False,
+        default="models/vosk-model-small-ru-0.22",
+        help="path to model",
+    )
     args = parser.parse_args()
 
     model = get_model(args.model)
     process_audiofile(model, args.file)
-    
