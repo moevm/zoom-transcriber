@@ -91,6 +91,7 @@ def process_audiofile(
 
     rec = KaldiRecognizer(model, 16000)
     rec.SetWords(True)
+    rec.Reset()
 
     i = 0
     while bytes_data := process.stdout.read(4000):
@@ -136,9 +137,6 @@ def process_dir(dir_path_raw: str, model_path: str) -> None:
         json.dump(
             [r._asdict() for r in meeting_result], f, ensure_ascii=False, indent=2
         )
-
-    model = get_model(model_path)
-    del model
 
     elapsed_time = time.time() - start_time
     print(f"Finished processing directory {dir_path}, elapsed time: {elapsed_time}s")
