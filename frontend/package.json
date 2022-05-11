@@ -1,0 +1,15 @@
+{
+  "name": "nir-zoom-frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "build_speaker": "browserify src/speaker-recording.js -o speaker-bundle.js && cp speaker-bundle.js ../backend/static/",
+    "build_meeting": "browserify src/meeting-recording.js -o meeting-bundle.js && cp meeting-bundle.js ../backend/static/"
+  },
+  "author": "SuperSolik",
+  "license": "ISC",
+  "dependencies": {
+    "microphone-stream": "^6.0.1"
+  }
+}

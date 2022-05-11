@@ -6,36 +6,22 @@ from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Callable, NamedTuple, Optional, Union
+from typing import Callable, Optional, Union
 
-import numpy as np
 from vosk import KaldiRecognizer, Model, SetLogLevel, SpkModel
 
-from spk_utils import SpkResult, check_spk_distance, extract_spk_from_result
-from utils import get_bad_words, merge_iterable
+from vosk_utils import (
+    SpkResult,
+    VoskResult,
+    extract_spk_from_result,
+    process_vosk_result,
+)
+from vosk_utils.utils import merge_iterable
 
-SetLogLevel(-1)
+SetLogLevel(0)
 
 NUM_ALTERNATIVES = 4
 MERGE_DIFF_SEC = 0.75
-
-
-BAD_WORDS = get_bad_words()
-
-
-QUESTION_RULES = [
-    lambda text: "вопрос" in text,
-    lambda text: "а что такое" in text,
-    lambda text: "в чем заключается" in text,
-]
-
-
-class VoskResult(NamedTuple):
-    start: float
-    end: float
-    text: str
-    speaker: str
-    is_question: bool
 
 
 @lru_cache(maxsize=5)
@@ -84,43 +70,6 @@ class Loader:
 model_loader = Loader(_get_model)
 spk_model_loader = Loader(_get_spk_model)
 spk_vectors_loader = Loader(_get_spk_vectors)
-
-
-def process_vosk_result(
-    res: dict, spk_vectors: dict[str, list[list[float]]]
-) -> VoskResult:
-    if not (words := res.get("result")):
-        return
-
-    text: str = res["text"]
-
-    is_question = False
-    for rule in QUESTION_RULES:
-        if rule(text):
-            is_question = True
-            break
-
-    for bad_word in BAD_WORDS:
-        text = text.replace(bad_word, "")
-
-    speaker_name = "unknown"
-    if "spk" in res:
-        names = tuple(spk_vectors.keys())
-        dists = list(
-            filter(
-                None, (check_spk_distance(res, vecs) for vecs in spk_vectors.values())
-            )
-        )
-        if len(dists) == len(names):
-            speaker_name = names[np.argmin(dists)]
-
-    return VoskResult(
-        start=words[0]["start"],
-        end=words[-1]["end"],
-        text=text,
-        speaker=speaker_name,
-        is_question=is_question,
-    )
 
 
 def process_audiofile(

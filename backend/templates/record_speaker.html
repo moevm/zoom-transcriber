@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/static/main.css">
+    <script src="/static/speaker-bundle.js" defer></script>
+    <title>NIR Meeting transriber</title>
+</head>
+
+<body>
+    <header>
+        <h1>Record speaker</h1>
+    </header>
+    <nav>
+        <a href="/">Main page</a> | <a href="/record/meeting">Record meeting</a>
+    </nav>
+
+
+    <div>
+
+        <div id="speaker-set-status" class="speaker-not-set">
+            <p>Speaker is not set</p>
+        </div>
+
+        <form id="set-speaker" method="post" action="/spk/init">
+            <input name="speaker_name" type="text" placeholder="Input speaker name">
+            <input name="speaker-set-btn" type="submit" value="Set speaker">
+        </form>
+    </div>
+
+
+    <div id="speaker-recording-status" class="speaker-not-set">
+        <p>Recording is not in progress</p>
+    </div>
+
+    <div id="speaker-recording-stats" hidden>
+        <p></p>
+    </div>
+
+    <div>
+        <button id="start-recording" disabled>Start Recording</button>
+        <button id="stop-recording" disabled>Stop Recording</button>
+        <button id="reset-recording" hidden disabled>Record another speaker</button>
+    </div>
+</body>
+
+</html>

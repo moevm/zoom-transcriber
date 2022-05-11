@@ -1,8 +1,10 @@
+import os
 import pickle
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Callable, Iterable
 
-BAD_WORDS_PATH = "./bad_words.pkl"
+BAD_WORDS_PATH = str(Path(__file__).parent.absolute().joinpath("bad_words.pkl"))
 
 
 def merge_iterable(

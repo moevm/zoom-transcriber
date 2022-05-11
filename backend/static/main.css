@@ -1,0 +1,32 @@
+div,
+h1,
+h3,
+nav {
+    font-family: "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    font-weight: 300;
+}
+
+
+.speaker-not-set {
+    color: #f00;
+    opacity: 0.8;
+}
+
+.speaker-set {
+    color: #008000;
+    opacity: 0.8;
+}
+
+.col-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    vertical-align: middle;
+    justify-content: space-between;
+}
+
+
+textarea {
+    overflow-y: scroll;
+    resize: none;
+}

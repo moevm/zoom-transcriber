@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/static/main.css">
+    <script src="/static/multiselect.js"></script>
+    <script src="/static/meeting-bundle.js" defer></script>
+    <title>NIR Meeting transriber</title>
+</head>
+
+<body>
+    <header>
+        <h1>Record meeting</h1>
+    </header>
+    <nav>
+        <a href="/">Main page</a> | <a href="/record/speaker">Record speakers</a>
+    </nav>
+
+    <div id="meeting-set-status" class="speaker-not-set">
+        <p>Meeting is not set</p>
+    </div>
+
+
+
+    <form id="set-meeting" method="post" action="/meeting/init">
+        <div class="col-container" style="height: 100px;">
+            <input name="meeting_name" type="text" placeholder="Input meeting name">
+
+            <select style="min-width: 250px; width: 15%" name="meeting_speakers" id="meeting_speakers" multiple
+                multiselect-search="true" multiple multiselect-select-all="true" multiselect-hide-x="false">
+
+                {% for item in speaker_items %}
+                <option value="{{item.speaker_id}}">{{item.speaker_id}}</option>
+                {% endfor %}
+            </select>
+
+            <input name="meeting-set-btn" type="submit" value="Set meeting data">
+        </div>
+    </form>
+
+    <div id="meeting-recording-status" class="speaker-not-set">
+        <p>Recording is not in progress</p>
+    </div>
+
+    <div id="meeting-recording-stats" hidden>
+        <p></p>
+    </div>
+
+    <div id="meetings-buttons">
+        <button id="start-recording" disabled>Start Recording</button>
+        <button id="stop-recording" disabled>Stop Recording</button>
+        <button id="reset-recording" hidden disabled>Record another meeting</button>
+    </div>
+
+    <div hidden id="recognized-text">
+        <h3>Recognized text:</h3>
+        <textarea id="recognized-text-area" cols="80" rows="20" readonly></textarea>
+    </div>
+
+</body>
+
+</html>
