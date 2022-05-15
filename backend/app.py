@@ -346,13 +346,10 @@ async def recognize_ws(
     await socket.accept()
 
     loop = asyncio.get_running_loop()
-
     meeting_id = meeting_data["id"]
-
     meeting = await sessions_col.find_one(
         {"status": "in_progress", "meeting_id": meeting_id}
     )
-
     spk_vectors = await speakers_col.aggregate(
         [
             {
@@ -367,7 +364,6 @@ async def recognize_ws(
 
     spk_vectors = {el["speaker_id"]: el["data"] for el in spk_vectors}
     process_fn = partial(process_vosk_result, spk_vectors=spk_vectors)
-    print(spk_vectors)
     config = {"config": {"sample_rate": 16000}}
 
     async with websockets.connect(VOSK_SERVER_WS_URL) as vosk_server:
