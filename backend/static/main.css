@@ -36,3 +36,16 @@ a.link-btn {
     -moz-appearance: button;
     appearance: button;
 }
+
+.styled-table th,
+.styled-table td {
+    width: auto;
+    border: 1px solid black;
+    border-style: solid;
+}
+
+table {
+    table-layout: auto;
+    border-collapse: collapse;
+    width: 100%;
+}

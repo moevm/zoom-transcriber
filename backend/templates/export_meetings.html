@@ -13,9 +13,43 @@
     </header>
     <nav>
         <a href="/">Main page</a>
-        <a href="/record/meeting">Record meeting</a>
-        <a href="/record/speaker">Record speakers</a>
+        | <a href="/record/meeting">Record meeting</a>
+        | <a href="/record/speaker">Record speakers</a>
     </nav>
+
+    <br>
+    <div>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    {% for header in headers %}
+                    <th>{{header}}</th>
+                    {% endfor %}
+                    <th></th>
+                </tr>
+            </thead>
+
+            {% for r in rows %}
+            <tr>
+                {% for header in headers %}
+                <td>{{r[header]}}</td>
+                {% endfor %}
+                <td><a href="/meeting/export/{{r['meeting_id']}}">Export</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <br>
+    <div>
+
+        {% if 'page_prev' in page_data %}
+        <a href="/export?page={{page_data['page_prev']}}">&larr;</a>
+        {% endif %}
+        <span>Page {{page_data['current_page']}}</span>
+        {% if 'page_next' in page_data %}
+        <a href="/export?page={{page_data['page_next']}}">&rarr;</a>
+        {% endif %}
+    </div>
 </body>
 
 </html>

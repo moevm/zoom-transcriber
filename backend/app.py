@@ -2,6 +2,7 @@ import asyncio
 import base64
 import csv
 import json
+import math
 import zipfile
 from datetime import datetime
 from functools import partial
@@ -15,6 +16,7 @@ from fastapi import (
     Cookie,
     Depends,
     FastAPI,
+    Query,
     Request,
     WebSocket,
     WebSocketDisconnect,
@@ -121,10 +123,49 @@ async def meetings_page(req: Request):
 
 
 @app.get("/export")
-async def export_page(req: Request):
-    speaker_items = await sessions_col.find({}, {"meeting_id": 1}).to_list(length=None)
+async def export_page(
+    req: Request,
+    page: int = Query(default=1, gt=0),
+    page_size: int = Query(default=8, gt=0),
+):
+    metadata_headers = [
+        "meeting_id",
+        "start_date",
+        "end_date",
+        "recognized_speakers",
+        "selected_speakers",
+        "recognized_speakers_ratio",
+    ]
+
+    sessions_cnt = await sessions_col.count_documents({"status": "completed"})
+    meetings_data = (
+        await sessions_col.find({"status": "completed"}, {"data": 0})
+        .sort("start_date", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+        .to_list(length=None)
+    )
+
+    for m in meetings_data:
+        m["recognized_speakers"] = "|".join(m["recognized_speakers"])
+        m["selected_speakers"] = "|".join(m["selected_speakers"])
+
+    page_limit = math.ceil(sessions_cnt / page_size)
+
+    page_data = {"current_page": page}
+    if page > 1:
+        page_data["page_prev"] = page - 1
+    if page < page_limit:
+        page_data["page_next"] = page + 1
+
     return templates.TemplateResponse(
-        "record_meeting.html", {"request": req, "speaker_items": speaker_items}
+        "export_meetings.html",
+        {
+            "request": req,
+            "headers": metadata_headers,
+            "rows": meetings_data,
+            "page_data": page_data,
+        },
     )
 
 
@@ -472,7 +513,7 @@ async def process_export_meeting(meeting_id: str):
     return questions
 
 
-def create_csv_io(headers, rows) -> StringIO:
+def create_csv_content(headers, rows) -> str:
     with StringIO() as s:
         writer = csv.DictWriter(
             s, delimiter=",", fieldnames=headers, extrasaction="ignore"
@@ -480,7 +521,7 @@ def create_csv_io(headers, rows) -> StringIO:
         writer.writeheader()
         for r in rows:
             writer.writerow(r)
-        return s
+        return s.getvalue()
 
 
 def zipfiles(zip_name: str, files: dict[str, Union[str, StringIO]]):
@@ -491,7 +532,7 @@ def zipfiles(zip_name: str, files: dict[str, Union[str, StringIO]]):
     # The zip compressor
     with zipfile.ZipFile(zip_io, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for name, content in files.items():
-            zf.writestr(name, content.getvalue())
+            zf.writestr(name, content)
 
     # Grab ZIP file from in-memory, make response with correct MIME-type
     return StreamingResponse(
@@ -515,12 +556,15 @@ async def export_meeting(meeting_id: str):
         "selected_speakers",
         "recognized_speakers_ratio",
     ]
-    metadata_csv_io = create_csv_io(metadata_headers, [meeting_data])
+
+    meeting_data["recognized_speakers"] = "|".join(meeting_data["recognized_speakers"])
+    meeting_data["selected_speakers"] = "|".join(meeting_data["selected_speakers"])
+    metadata_csv_io = create_csv_content(metadata_headers, [meeting_data])
 
     meeting_questions = await process_export_meeting(meeting_id)
     questions_csv_headers = ["speaker", "text", "start", "end", "conf"]
 
-    questions_csv_io = create_csv_io(questions_csv_headers, meeting_questions)
+    questions_csv_io = create_csv_content(questions_csv_headers, meeting_questions)
 
     return zipfiles(
         meeting_id,
