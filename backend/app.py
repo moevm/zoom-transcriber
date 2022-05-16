@@ -1,11 +1,14 @@
 import asyncio
 import base64
+import csv
 import json
+import zipfile
 from datetime import datetime
 from functools import partial
 from http.client import HTTPException
+from io import BytesIO, StringIO
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import websockets
 from fastapi import (
@@ -19,11 +22,12 @@ from fastapi import (
     status,
     templating,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from backend.config import (
     GOOD_SPK_FRAMES_NUM,
+    MERGE_DIFF_SEC,
     MIN_SPK_VECTORS_NUM,
     ROOT_DIR,
     SPK_GOOD_RATIO,
@@ -111,6 +115,14 @@ def speakers_page(req: Request):
 @app.get("/record/meeting")
 async def meetings_page(req: Request):
     speaker_items = await speakers_col.find({}, {"speaker_id": 1}).to_list(length=None)
+    return templates.TemplateResponse(
+        "record_meeting.html", {"request": req, "speaker_items": speaker_items}
+    )
+
+
+@app.get("/export")
+async def export_page(req: Request):
+    speaker_items = await sessions_col.find({}, {"meeting_id": 1}).to_list(length=None)
     return templates.TemplateResponse(
         "record_meeting.html", {"request": req, "speaker_items": speaker_items}
     )
@@ -290,6 +302,7 @@ async def finish_recog_session(
         status_code=status.HTTP_200_OK,
         content={
             "status": "finished",
+            "meeting_id": meeting_id,
             "stats": {
                 "speakers_all_num": t_len,
                 "speakers_recognized_num": r_len,
@@ -415,3 +428,104 @@ async def recognize_ws(
                         "$addToSet": {"recognized_speakers": vosk_res.speaker},
                     },
                 )
+
+
+def is_close(a, b):
+    speakers_eq = a["speaker"] == b["speaker"]
+    time_diff_eq = abs(b["start"] - a["end"]) < MERGE_DIFF_SEC
+    return speakers_eq and time_diff_eq
+
+
+def merge(a, b):
+    return {
+        "start": a["start"],
+        "end": b["end"],
+        "text": " ".join((a["text"], b["text"])).strip(),
+        "conf": (a["conf"] + b["conf"]) / 2,
+        "speaker": a["speaker"],
+        "is_question": a["is_question"],
+    }
+
+
+async def process_export_meeting(meeting_id: str):
+    meeting_records = sessions_col.aggregate(
+        [
+            {"$match": {"meeting_id": meeting_id, "status": "completed"}},
+            {"$unwind": "$data"},
+            {"$replaceRoot": {"newRoot": "$data"}},
+            {"$sort": {"start": 1}},
+        ]
+    )
+
+    questions = []
+    q_phrases = 0
+    async for record in meeting_records:
+        if not questions or not is_close(questions[-1], record):
+            if record["is_question"]:
+                questions.append(record)
+                q_phrases = 0
+
+        elif q_phrases <= 5:
+            questions[-1] = merge(questions[-1], record)
+            q_phrases += 1
+
+    return questions
+
+
+def create_csv_io(headers, rows) -> StringIO:
+    with StringIO() as s:
+        writer = csv.DictWriter(
+            s, delimiter=",", fieldnames=headers, extrasaction="ignore"
+        )
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)
+        return s
+
+
+def zipfiles(zip_name: str, files: dict[str, Union[str, StringIO]]):
+    zip_filename = f"{zip_name}.zip"
+
+    # Open StringIO to grab in-memory ZIP contents
+    zip_io = BytesIO()
+    # The zip compressor
+    with zipfile.ZipFile(zip_io, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, content in files.items():
+            zf.writestr(name, content.getvalue())
+
+    # Grab ZIP file from in-memory, make response with correct MIME-type
+    return StreamingResponse(
+        iter([zip_io.getvalue()]),
+        media_type="application/x-zip-compressed",
+        headers={"Content-Disposition": f"attachment; filename={zip_filename}"},
+    )
+
+
+@app.get("/meeting/export/{meeting_id}")
+async def export_meeting(meeting_id: str):
+    meeting_data = await sessions_col.find_one(
+        {"meeting_id": meeting_id, "status": "completed"}, {"data": 0}
+    )
+
+    metadata_headers = [
+        "meeting_id",
+        "start_date",
+        "end_date",
+        "recognized_speakers",
+        "selected_speakers",
+        "recognized_speakers_ratio",
+    ]
+    metadata_csv_io = create_csv_io(metadata_headers, [meeting_data])
+
+    meeting_questions = await process_export_meeting(meeting_id)
+    questions_csv_headers = ["speaker", "text", "start", "end", "conf"]
+
+    questions_csv_io = create_csv_io(questions_csv_headers, meeting_questions)
+
+    return zipfiles(
+        meeting_id,
+        {
+            "metadata.csv": metadata_csv_io,
+            "questions.csv": questions_csv_io,
+        },
+    )

@@ -10,6 +10,7 @@ const meetingRecordingStatus = document.getElementById('meeting-recording-status
 const recordingStats = document.getElementById('meeting-recording-stats');
 const recognizedText = document.getElementById('recognized-text');
 const recognizedTextArea = document.getElementById('recognized-text-area');
+const mettingBts = document.getElementById('meetings-buttons');
 
 let ws;
 
@@ -163,13 +164,22 @@ startRecording.onclick = function () {
         })
         .then((respJson) => {
           if (respJson.status == "finished") {
+            const meetingId = respJson.meeting_id;
             const stats = respJson.stats;
             recordingStats.hidden = false;
 
             recordingStats.className = "speaker-set";
 
             recordingStats.querySelector("p").innerText =
-              `Stats: speakers recognized - ${stats.speakers_recognized_num}/${stats.speakers_all_num}`
+              `Stats: speakers recognized - ${stats.speakers_recognized_num}/${stats.speakers_all_num}`;
+
+
+            exportBtn = document.createElement('a');
+            exportBtn.innerText = 'Export meeting';
+            exportBtn.setAttribute('href', `/meeting/export/${meetingId}`);
+            exportBtn.setAttribute('download', 'download');
+            exportBtn.className = "link-btn";
+            mettingBts.appendChild(exportBtn);
           }
         })
         .catch((err) => {

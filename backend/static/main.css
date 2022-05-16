@@ -30,3 +30,9 @@ textarea {
     overflow-y: scroll;
     resize: none;
 }
+
+a.link-btn {
+    -webkit-appearance: button;
+    -moz-appearance: button;
+    appearance: button;
+}
