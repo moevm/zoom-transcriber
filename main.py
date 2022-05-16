@@ -148,6 +148,7 @@ def records_merge(a: VoskResult, b: VoskResult):
         start=a.start,
         end=b.end,
         text=" ".join((a.text, b.text)).strip(),
+        conf=(a.conf + b.conf) / 2,
         speaker=a.speaker,
         is_question=a.is_question and b.is_question,
     )
