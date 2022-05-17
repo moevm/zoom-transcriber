@@ -64,6 +64,18 @@ Page support pagination, page shows 8 records, when sessions number will be over
 
 To export any record, just click `Export`, data will be exported in zip archive with 2 csv files - `metadata.csv` will contain data shown in table, `questions.csv` will contain speakers questionta daa with timestamps in seconds relative to start of the recording
 
+## Code notes
 
-# outdated info
+### Vosk utils
+
+1. Speaker detection is based on `cosine distance` between detected speaker features vector (using Vosk) and pre-recorded features vectors - for each speaker set the mean distance is calculated and speaker with minimal mean distance is being picked
+2. Question detecting is rule-based, rules are gathered in `QUESTION_RULES` array at the top of `vosk_utils/__init__.py` file, each rule is the boolen function, with checks keywords entry in passed text
+3. Forbidden ("bad") words are being stored as pickled python list in `bad_words.pkl` in `vosk_utils` folder, if you wish to extend this list, you need to unpicke this file, extend python list with needed words and pickle it again. Bad words are being simply erased for recognized phrases
+4. Questions during export are being calculated in following algo: if rule-based algo determined the phrase is a question, at most 5 next subsequent phrases from same speaker (without interruption from other speakers) would be added to the question text. The logic behind this is that rule-based algo looking to the start of the question, but following phrases even after a pauses are usually still a part of the question, even if they don't contain explicit question keywords
+
+### CLI app
+
+__TODO__
+
+## outdated info
 Link to screencast with first results (19.03.2022 - cli app) - https://drive.google.com/file/d/1MQdnaoQoiWK9L1MZP185QtTg8CifSfz9/view?usp=sharing
