@@ -36,7 +36,11 @@ from backend.config import (
     VOSK_SERVER_WS_URL,
 )
 from backend.db import sessions_col, speakers_col
+from backend.logging_utils import setup_logging
 from vosk_utils import extract_spk_from_result, process_vosk_result
+
+setup_logging()
+
 
 app = FastAPI(title="audio-transcriber")
 
