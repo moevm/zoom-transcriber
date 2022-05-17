@@ -4,12 +4,16 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "build_speaker": "browserify src/speaker-recording.js -o speaker-bundle.js && cp speaker-bundle.js ../backend/static/",
-    "build_meeting": "browserify src/meeting-recording.js -o meeting-bundle.js && cp meeting-bundle.js ../backend/static/"
+    "build_speaker": "browserify -p tinyify  src/speaker-recording.js -o speaker-bundle.js && cp speaker-bundle.js ../backend/static/",
+    "build_meeting": "browserify -p tinyify src/meeting-recording.js -o meeting-bundle.js && cp meeting-bundle.js ../backend/static/"
   },
   "author": "SuperSolik",
   "license": "ISC",
   "dependencies": {
     "microphone-stream": "^6.0.1"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "tinyify": "^3.0.0"
   }
 }

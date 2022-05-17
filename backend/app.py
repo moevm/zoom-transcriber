@@ -39,7 +39,13 @@ from backend.db import sessions_col, speakers_col
 from vosk_utils import extract_spk_from_result, process_vosk_result
 
 app = FastAPI(title="audio-transcriber")
+
 templates = templating.Jinja2Templates(ROOT_DIR.joinpath("templates"))
+app.mount(
+    "/static",
+    staticfiles.StaticFiles(directory=ROOT_DIR.joinpath("static")),
+    name="static",
+)
 
 
 async def get_spk_cookie_data_ws(
@@ -84,15 +90,6 @@ def create_session_cookie(session_id: str, start_date: datetime) -> str:
 
     dumped = json.dumps(data)
     return base64.urlsafe_b64encode(dumped.encode("utf-8")).decode("ascii")
-
-
-app.mount(
-    "/static",
-    staticfiles.StaticFiles(
-        directory=Path(__file__).parent.absolute().joinpath("static"), html=True
-    ),
-    name="static",
-)
 
 
 class SpkInitData(BaseModel):
