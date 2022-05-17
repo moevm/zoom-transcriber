@@ -1,8 +1,9 @@
 import json
 import os
 import subprocess
+import textwrap
 import time
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, partial
 from pathlib import Path
@@ -259,30 +260,43 @@ def process_extract_spk_dir(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description=textwrap.dedent(
+            """
+    CLI app for transcribing audio files for speaker and question detection.
+    Can run in 2 modes:
+    1) default mode - processes all mp4 files in provided dir and creates a single result.json file with all detected phrases in timestamp order from the start. To process multispeaker recording provided dir should contain single audio file with combined sound.
+    2) spk extraction mode - prepares speaker features data for default mode, provided dir should contain speaker recording, with one file for each speaker about 2-5 minutes long (with long sentences and pauses about 2 secons between each sentence).
+    """
+        ),
+        formatter_class=RawTextHelpFormatter,
+    )
     parser.add_argument(
-        "--dir", type=str, required=True, help="path to directory with m4a audio files"
+        "--dir",
+        type=str,
+        required=True,
+        help="Path to directory with m4a audio files, for speaker features extraction filenames would be used as speaker names. App would create the folder with the same name as provided dir in current folder to write results to: `spk_vectors.json` in case of spk extraction, `result.json` in case of default processing mode",
     )
     parser.add_argument(
         "--model",
         type=str,
         required=False,
         default="models/vosk-model-small-ru-0.22",
-        help="path to model",
+        help="path to Vosk language model",
     )
     parser.add_argument(
         "--spk-model",
         type=str,
         required=False,
         default=None,
-        help="path to spk model",
+        help="path to Vosk spk model",
     )
     parser.add_argument(
         "--spk-vectors",
         type=str,
         required=False,
         default=None,
-        help="path to spk vectors",
+        help="Path to spk_vectors.json file, containing info about speaker names and feauteres. Can be prepared in --extract-spk mode, and required for default processing mode",
     )
     parser.add_argument(
         "--extract-spk",

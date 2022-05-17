@@ -75,7 +75,9 @@ To export any record, just click `Export`, data will be exported in zip archive 
 
 ### CLI app
 
-__TODO__
+Use `python3.10 main.py --help` to invoke detailed description:
+
+<img width="1013" alt="image" src="https://user-images.githubusercontent.com/31539612/168869347-f4de4580-9126-4697-b69c-283525435477.png">
 
 ## outdated info
 Link to screencast with first results (19.03.2022 - cli app) - https://drive.google.com/file/d/1MQdnaoQoiWK9L1MZP185QtTg8CifSfz9/view?usp=sharing
