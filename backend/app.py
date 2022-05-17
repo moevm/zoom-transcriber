@@ -6,7 +6,6 @@ import math
 import zipfile
 from datetime import datetime
 from functools import partial
-from http.client import HTTPException
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import List, Optional, Union
@@ -16,6 +15,7 @@ from fastapi import (
     Cookie,
     Depends,
     FastAPI,
+    HTTPException,
     Query,
     Request,
     WebSocket,
