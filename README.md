@@ -90,6 +90,12 @@ To export any record, just click `Export`, data will be exported in zip archive 
 4. Questions during export are being calculated in following algo: if rule-based algo determined the phrase is a question, at most 5 next subsequent phrases from same speaker (without interruption from other speakers) would be added to the question text. The logic behind this is that rule-based algo looking to the start of the question, but following phrases even after a pauses are usually still a part of the question, even if they don't contain explicit question keywords
 
 ### CLI app
+Activate `virtual environment` with Python3.10, then install dependencies using:
+
+```bash
+pip install -r requirements.txt
+pip install -r vosk-requirements.txt
+```
 
 Use `python3.10 main.py --help` to invoke detailed description:
 
