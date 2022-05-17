@@ -31,7 +31,9 @@ _TODO_
 
 ### endpoint docs
 
-Available at `GET /docs` endpoint, navigate using browser
+REST endpoints docs available at `GET /docs` endpoint, navigate using browser
+
+Also contains two websocket endpoints: `/spk/ws` and `/meeting/ws`, responsible for processing audio chunks sent from client using websockets for speaker and meeting sessions.
 
 ## Using web app
 
