@@ -6,7 +6,6 @@ import math
 import zipfile
 from datetime import datetime
 from functools import partial
-from http.client import HTTPException
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import List, Optional, Union
@@ -16,6 +15,7 @@ from fastapi import (
     Cookie,
     Depends,
     FastAPI,
+    HTTPException,
     Query,
     Request,
     WebSocket,
@@ -24,7 +24,7 @@ from fastapi import (
     status,
     templating,
 )
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from backend.config import (
@@ -104,17 +104,35 @@ class MeetingInitData(BaseModel):
     meeting_speakers: List[str]
 
 
-@app.get("/")
-def root_page(req: Request):
+@app.get(
+    "/",
+    tags=["public"],
+    description="Returns main page html",
+    responses={200: {"content": {"text/html": {}}}},
+    response_class=HTMLResponse,
+)
+def main_page(req: Request):
     return templates.TemplateResponse("index.html", {"request": req})
 
 
-@app.get("/record/speaker")
+@app.get(
+    "/record/speaker",
+    tags=["public"],
+    description="Returns html for speaker recorging page",
+    responses={200: {"content": {"text/html": {}}}},
+    response_class=HTMLResponse,
+)
 def speakers_page(req: Request):
     return templates.TemplateResponse("record_speaker.html", {"request": req})
 
 
-@app.get("/record/meeting")
+@app.get(
+    "/record/meeting",
+    tags=["public"],
+    description="Returns html for audio session recorging page",
+    responses={200: {"content": {"text/html": {}}}},
+    response_class=HTMLResponse,
+)
 async def meetings_page(req: Request):
     speaker_items = await speakers_col.find({}, {"speaker_id": 1}).to_list(length=None)
     return templates.TemplateResponse(
@@ -122,7 +140,13 @@ async def meetings_page(req: Request):
     )
 
 
-@app.get("/export")
+@app.get(
+    "/export",
+    tags=["public"],
+    description="Returns html for export sessions data page",
+    responses={200: {"content": {"text/html": {}}}},
+    response_class=HTMLResponse,
+)
 async def export_page(
     req: Request,
     page: int = Query(default=1, gt=0),
@@ -169,8 +193,14 @@ async def export_page(
     )
 
 
-@app.post("/spk/init")
-async def create_spk_session(data: SpkInitData):
+@app.post(
+    "/spk/init",
+    description="Inits speaker recording session, creates record in db by provided speaker_name, sets client cookie containing speaker_name",
+    responses={
+        200: {"content": {"application/json": {"example": {"status": "initiated"}}}}
+    },
+)
+async def init_spk_session(data: SpkInitData):
     speaker_id = data.speaker_name
     start_date = datetime.now()
     spk_session_cookie = create_session_cookie(speaker_id, start_date)
@@ -196,8 +226,29 @@ async def create_spk_session(data: SpkInitData):
     return resp
 
 
-@app.get("/spk/finish")
-async def create_spk_session(
+@app.get(
+    "/spk/finish",
+    description="Finishes speaker recording session, marks speaker as completed, returns recording stats, deletes client speaker session cookie",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "finished",
+                        "stats": {
+                            "verdict": "<true of false, determining whether the speaker recording is good or not>",
+                            "msg": "<verdict msg>",
+                            "spk_ratio": 0.75,
+                            "vectors_num": 5,
+                            "vectors_num_req": MIN_SPK_VECTORS_NUM,
+                        },
+                    }
+                }
+            }
+        }
+    },
+)
+async def stop_spk_session(
     spk_data: dict = Depends(get_spk_cookie_data_http),
 ):
     speaker_id = spk_data["id"]
@@ -279,8 +330,18 @@ async def create_spk_session(
     return resp
 
 
-@app.post("/meeting/init")
-async def create_recog_session(meeting_data: MeetingInitData):
+@app.post(
+    "/meeting/init",
+    description="Inits audio session, creates record in db by provided meeting_id and selected speakers, sets client cookie containing meeting_id",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": {"example": {"status": "initiated"}}}
+            }
+        }
+    },
+)
+async def create_meeting_session(meeting_data: MeetingInitData):
     meeting_name = meeting_data.meeting_name
     speakers = meeting_data.meeting_speakers
 
@@ -310,8 +371,27 @@ async def create_recog_session(meeting_data: MeetingInitData):
     return resp
 
 
-@app.get("/meeting/finish")
-async def finish_recog_session(
+@app.get(
+    "/meeting/finish",
+    description="Finishes recorded audio session, returns stats, deletes client cookie with meeting_id",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "finished",
+                        "meeting_id": "<meeting_id>",
+                        "stats": {
+                            "speakers_all_num": 5,
+                            "speakers_recognized_num": 4,
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
+async def stop_meeting_session(
     meeting_data: dict = Depends(get_meeting_cookie_data_http),
 ):
     meeting_id = meeting_data["id"]
@@ -356,7 +436,7 @@ async def finish_recog_session(
 
 
 @app.websocket("/spk/ws/")
-async def spk_ws(
+async def spk_websocket_processing(
     socket: WebSocket,
     speaker_data: dict = Depends(get_spk_cookie_data_ws),
 ):
@@ -394,7 +474,7 @@ async def spk_ws(
 
 
 @app.websocket("/meeting/ws/")
-async def recognize_ws(
+async def meeting_audio_websocket_processing(
     socket: WebSocket, meeting_data: dict = Depends(get_meeting_cookie_data_ws)
 ):
     await socket.accept()
@@ -542,7 +622,16 @@ def zipfiles(zip_name: str, files: dict[str, Union[str, StringIO]]):
     )
 
 
-@app.get("/meeting/export/{meeting_id}")
+@app.get(
+    "/meeting/export/{meeting_id}",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {"application/x-zip-compressed": {}},
+            "description": "Returns the zip archive with meeting's csv",
+        }
+    },
+)
 async def export_meeting(meeting_id: str):
     meeting_data = await sessions_col.find_one(
         {"meeting_id": meeting_id, "status": "completed"}, {"data": 0}
