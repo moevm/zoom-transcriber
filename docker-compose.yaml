@@ -1,0 +1,31 @@
+version: '3.0'
+
+services:
+  audio-transcriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - VOSK_SERVER_WS_URL=ws://vosk-ru-server:2700
+    env_file:
+      - .env
+    ports:
+      - "3030:3030"
+    depends_on:
+      - mongodb
+      - vosk-ru-server
+
+  vosk-ru-server:
+    image: supersolik/vosk-ru-spk:latest
+    restart: always
+    environment:
+      - VOSK_SHOW_WORDS=true
+    ports:
+      - "2700:2700"
+
+  mongodb:
+    image: mongo
+    restart: always
+    volumes:
+      - ./mongodb/data:/data/db

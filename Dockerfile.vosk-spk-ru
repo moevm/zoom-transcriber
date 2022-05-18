@@ -1,0 +1,25 @@
+FROM alphacep/kaldi-vosk-server:latest
+
+ENV RUVERSION 0.22
+ENV SPKVERSION 0.4
+
+RUN mkdir /opt/models \
+    && cd /opt/models \
+    && wget -q http://alphacephei.com/kaldi/models/vosk-model-ru-${RUVERSION}.zip \
+    && unzip vosk-model-ru-${RUVERSION}.zip \
+    && mv vosk-model-ru-${RUVERSION} ru-model \
+    && rm -rf model/extra \
+    && rm -rf vosk-model-ru-${RUVERSION}.zip \
+    && wget -q https://alphacephei.com/vosk/models/vosk-model-spk-${SPKVERSION}.zip \
+    && unzip vosk-model-spk-${SPKVERSION}.zip \
+    && mv vosk-model-spk-${SPKVERSION} spk-model \
+    && rm -rf spk-model/extra \
+    && rm -rf vosk-model-spk-${SPKVERSION}.zip
+
+EXPOSE 2700
+WORKDIR /opt/vosk-server/websocket
+
+ENV VOSK_MODEL_PATH /opt/models/ru-model
+ENV VOSK_SPK_MODEL_PATH /opt/models/spk-model
+
+CMD [ "python3", "./asr_server.py"]

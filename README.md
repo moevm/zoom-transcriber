@@ -7,9 +7,11 @@ Web application built with `Python3.10` and `Vosk` for transcribing audio from m
 - online microphone stream processing with transcription and speaker detection
 - export of finished audio sessions (metadata + detected questions)
 
-## Pre-requirements
+## Requirements
 
-Docker, x86_64/amd64 architecture (only for vosk server, doesn't support arm)
+Docker, x86_64/amd64 architecture, 16+ GB RAM (vosk server models use at least 8 GB)
+
+For manual run - Python3.10, installed MongoDB, Vosk Server, and _optionally Node_, if you wish to rebuild js bundles
 
 ## Running web app
 
@@ -25,15 +27,25 @@ Docker, x86_64/amd64 architecture (only for vosk server, doesn't support arm)
 * `SPK_GOOD_RATIO` - value restricting min border of ratio = (num good speaker features / num all speaker features), default is `0.65`
 * `MERGE_DIFF_SEC` - value in secs - how close should be two phrases to be combined into one, default is `2.5` s
 
-### starting procedures
+### Running using docker
 
-_TODO_
+1. Prepare `.env` file with needed variables, except for VOSK_SERVER_WS_URL and MONGODB_URI, they would be set automatically because specific images of Vosk Server and MongoDB would be used
+2. Run `docker-compose up -d`
+3. Navigate to `http://localhost:3030`
+
+### Running without docker
+
+1. Install dependencies using `pip install -r requirements.txt`. If you plan to run Vosk Server code manually, install vosk deps using `pip install -r vosk-requirements.txt`
+2. Check that Vosk Server and MongoDB are up and running, for Vosk Server you can use `supersolik/vosk-ru-spk:latest` docker image, or download vosk models - [ru model](https://alphacephei.com/vosk/models/vosk-model-ru-0.22.zip) and [spk model](https://alphacephei.com/vosk/models/vosk-model-spk-0.4.zip) and run [server code](https://github.com/alphacep/vosk-server/blob/master/websocket/asr_server.py) manually
+3. Set described env vars, required in this case are VOSK_SERVER_WS_URL and MONGODB_URI to point app to your running Vosk Server and MongoDB
+4. Run `uvicorn backend:app.app --host 127.0.0.1 --port 3030`
+5. Navigate to `http://localhost:3030`
 
 ### endpoint docs
 
 REST endpoints docs available at `GET /docs` endpoint, navigate using browser
 
-Also contains two websocket endpoints: `/spk/ws` and `/meeting/ws`, responsible for processing audio chunks sent from client using websockets for speaker and meeting sessions.
+Also app contains two websocket endpoints: `/spk/ws` and `/meeting/ws`, responsible for processing audio chunks sent from client using websockets for speaker and meeting sessions.
 
 ## Using web app
 
@@ -81,6 +93,12 @@ Page support pagination, page shows 8 records, when sessions number will be over
 To export any record, just click `Export`, data will be exported in zip archive with 2 csv files - `metadata.csv` will contain data shown in table, `questions.csv` will contain speakers questionta daa with timestamps in seconds relative to start of the recording
 
 ## Code notes
+
+### Js bundles
+
+1. go to `/frontend_scripts`
+2. run `npm install --include dev`
+3. to build js bundels, run `npm run build_speaker` and `npm run build_meeting`
 
 ### Vosk utils
 
