@@ -96,9 +96,9 @@ To export any record, just click `Export`, data will be exported in zip archive 
 
 ### Js bundles
 
-1. go to `/frontend_scripts`
+1. go to `./frontend_scripts`
 2. run `npm install --include dev`
-3. to build js bundels, run `npm run build_speaker` and `npm run build_meeting`
+3. to build js bundles, run `npm run build_speaker` and `npm run build_meeting`
 
 ### Vosk utils
 
