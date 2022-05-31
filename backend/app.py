@@ -9,6 +9,7 @@ from functools import partial
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import List, Optional, Union
+from urllib.parse import quote_plus, unquote
 
 import websockets
 from fastapi import (
@@ -424,7 +425,7 @@ async def stop_meeting_session(
         status_code=status.HTTP_200_OK,
         content={
             "status": "finished",
-            "meeting_id": meeting_id,
+            "meeting_id": quote_plus(meeting_id),
             "stats": {
                 "speakers_all_num": t_len,
                 "speakers_recognized_num": r_len,
@@ -634,6 +635,8 @@ def zipfiles(zip_name: str, files: dict[str, Union[str, StringIO]]):
     },
 )
 async def export_meeting(meeting_id: str):
+    meeting_id = unquote(meeting_id)
+
     meeting_data = await sessions_col.find_one(
         {"meeting_id": meeting_id, "status": "completed"}, {"data": 0}
     )
