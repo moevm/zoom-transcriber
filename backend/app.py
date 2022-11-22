@@ -7,7 +7,6 @@ import zipfile
 from datetime import datetime
 from functools import partial
 from io import BytesIO, StringIO
-from pathlib import Path
 from typing import List, Optional, Union
 from urllib.parse import quote_plus, unquote
 
@@ -38,7 +37,7 @@ from backend.config import (
 )
 from backend.db import sessions_col, speakers_col
 from backend.logging_utils import setup_logging
-from vosk_utils import extract_spk_from_result, process_vosk_result
+from vosk_utils import Denoiser, extract_spk_from_result, process_vosk_result
 
 setup_logging()
 
@@ -442,6 +441,7 @@ async def spk_websocket_processing(
     socket: WebSocket,
     speaker_data: dict = Depends(get_spk_cookie_data_ws),
 ):
+    denoiser = Denoiser(samplerate=16000, channels=1)
     speaker_id = speaker_data["id"]
 
     config = {"config": {"sample_rate": 16000}}
@@ -453,6 +453,7 @@ async def spk_websocket_processing(
         try:
             while True:
                 data = await socket.receive_bytes()
+                data = denoiser(data)
                 await vosk_server.send(data)
                 raw_data = await vosk_server.recv()
                 data = json.loads(raw_data)
@@ -479,8 +480,7 @@ async def spk_websocket_processing(
 async def meeting_audio_websocket_processing(
     socket: WebSocket, meeting_data: dict = Depends(get_meeting_cookie_data_ws)
 ):
-    await socket.accept()
-
+    denoiser = Denoiser(samplerate=16000, channels=1)
     loop = asyncio.get_running_loop()
     meeting_id = meeting_data["id"]
     meeting = await sessions_col.find_one(
@@ -502,6 +502,8 @@ async def meeting_audio_websocket_processing(
     process_fn = partial(process_vosk_result, spk_vectors=spk_vectors)
     config = {"config": {"sample_rate": 16000}}
 
+    await socket.accept()
+
     async with websockets.connect(VOSK_SERVER_WS_URL) as vosk_server:
         await vosk_server.send(json.dumps(config))
 
@@ -515,7 +517,9 @@ async def meeting_audio_websocket_processing(
         try:
             while True:
                 data = await socket.receive_bytes()
+                data = denoiser(data)
                 await vosk_server.send(data)
+
                 raw_data = await vosk_server.recv()
                 data = json.loads(raw_data)
 

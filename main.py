@@ -4,7 +4,7 @@ import subprocess
 import textwrap
 import time
 from argparse import ArgumentParser, RawTextHelpFormatter
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import Callable, Optional, Union
@@ -12,6 +12,7 @@ from typing import Callable, Optional, Union
 from vosk import KaldiRecognizer, Model, SetLogLevel, SpkModel
 
 from vosk_utils import (
+    Denoiser,
     SpkResult,
     VoskResult,
     extract_spk_from_result,
@@ -19,7 +20,7 @@ from vosk_utils import (
 )
 from vosk_utils.utils import merge_iterable
 
-SetLogLevel(0)
+SetLogLevel(-1)
 
 NUM_ALTERNATIVES = 4
 MERGE_DIFF_SEC = 0.75
@@ -78,6 +79,7 @@ def process_audiofile(
     model: Model,
     process_fn: Callable[[dict, str], Union[VoskResult, SpkResult]],
     spk_model: Optional[SpkModel] = None,
+    reduce_noise: bool = False,
 ) -> tuple[list[VoskResult], str]:
     result: list[VoskResult] = []
     file_path = Path(file_path_raw).absolute()
@@ -85,6 +87,8 @@ def process_audiofile(
 
     print(f"Started processing file {file_name}")
     start_time = time.time()
+
+    sample_rate = 16000
 
     process = subprocess.Popen(
         [
@@ -94,7 +98,7 @@ def process_audiofile(
             "-i",
             file_path,
             "-ar",
-            "16000",
+            str(sample_rate),
             "-ac",
             "1",
             "-f",
@@ -105,9 +109,7 @@ def process_audiofile(
         stdout=subprocess.PIPE,
     )
 
-    # speaker_name = file_name
-
-    rec = KaldiRecognizer(model, 16000)
+    rec = KaldiRecognizer(model, sample_rate)
     if spk_model:
         rec.SetSpkModel(spk_model)
 
@@ -115,8 +117,16 @@ def process_audiofile(
     rec.Reset()
 
     i = 0
-    while bytes_data := process.stdout.read(4000):
-        if rec.AcceptWaveform(bytes_data):
+    read_n = 4000
+
+    if reduce_noise:
+        denoiser = Denoiser(samplerate=sample_rate, channels=1)
+    else:
+        denoiser = lambda x: x
+
+    while bytes_data := process.stdout.read(read_n):
+        denoised_bytes_data = denoiser(bytes_data)
+        if rec.AcceptWaveform(denoised_bytes_data):
             recognized_data = json.loads(rec.Result())
             processed_result = process_fn(recognized_data)
             if processed_result is not None:
@@ -124,7 +134,6 @@ def process_audiofile(
 
         if i % 250 == 0:
             print(f"{file_name=}, processed data chunk #{i}")
-
         i += 1
 
     process.wait()
@@ -155,7 +164,7 @@ def records_merge(a: VoskResult, b: VoskResult):
     )
 
 
-def worker(audio_file):
+def worker(audio_file: str, reduce_noise: bool):
     fn = partial(process_vosk_result, spk_vectors=spk_vectors_loader.get())
 
     result, _ = process_audiofile(
@@ -163,16 +172,18 @@ def worker(audio_file):
         model=model_loader.get(),
         process_fn=fn,
         spk_model=spk_model_loader.get(),
+        reduce_noise=reduce_noise,
     )
     return result
 
 
-def extract_spk_worker(audio_file):
+def extract_spk_worker(audio_file: str, reduce_noise: bool):
     speaker_result, speaker_name = process_audiofile(
         file_path_raw=audio_file,
         model=model_loader.get(),
         process_fn=extract_spk_from_result,
         spk_model=spk_model_loader.get(),
+        reduce_noise=reduce_noise,
     )
     return speaker_result, speaker_name
 
@@ -182,6 +193,7 @@ def process_dir(
     model_path: str,
     spk_model_path: str = None,
     spk_vectors_path: str = None,
+    reduce_noise: bool = False,
 ) -> None:
     dir_path = Path(dir_path_raw).absolute()
     dir_name = dir_path.stem
@@ -202,8 +214,13 @@ def process_dir(
         spk_vectors_loader.set_path(spk_vectors_path)
         spk_vectors_loader.load()
 
+    futures: list[Future] = []
     with ThreadPoolExecutor(4) as pool:
-        res = pool.map(worker, audio_file_paths)
+        for path in audio_file_paths:
+            futures.append(pool.submit(worker, path, reduce_noise))
+        wait(futures)
+
+    res = [f.result() for f in futures]
 
     meeting_result = [x for y in res for x in y]  # flatten
 
@@ -221,7 +238,10 @@ def process_dir(
 
 
 def process_extract_spk_dir(
-    dir_path_raw: str, model_path: str, spk_model_path: str = None
+    dir_path_raw: str,
+    model_path: str,
+    spk_model_path: str = None,
+    reduce_noise: bool = False,
 ) -> None:
     dir_path = Path(dir_path_raw).absolute()
     dir_name = dir_path.stem
@@ -237,10 +257,14 @@ def process_extract_spk_dir(
         spk_model_loader.set_path(spk_model_path)
         spk_model_loader.load()
 
+    futures: list[Future] = []
     with ThreadPoolExecutor(4) as pool:
-        res: list[tuple[list[SpkResult], str]] = pool.map(
-            extract_spk_worker, audio_file_paths
-        )
+        for path in audio_file_paths:
+            futures.append(pool.submit(extract_spk_worker, path, reduce_noise))
+
+        wait(futures)
+
+    res: list[tuple[list[SpkResult], str]] = [f.result() for f in futures]
 
     spk_data = {}
     for spk_results, speaker_name in res:
@@ -303,6 +327,11 @@ if __name__ == "__main__":
         action="store_true",
         help="if set, runs in spk extraction mode",
     )
+    parser.add_argument(
+        "--reduce_noise",
+        action="store_true",
+        help="if set, perform noise reduction",
+    )
     args = parser.parse_args()
 
     dir_path = args.dir
@@ -310,7 +339,12 @@ if __name__ == "__main__":
         args.spk_model = os.path.abspath(args.spk_model)
 
     if args.extract_spk:
-        process_extract_spk_dir(dir_path, os.path.abspath(args.model), args.spk_model)
+        process_extract_spk_dir(
+            dir_path,
+            os.path.abspath(args.model),
+            args.spk_model,
+            args.reduce_noise,
+        )
     else:
         if not args.spk_vectors:
             print("No spk vectors path provided")
@@ -319,5 +353,9 @@ if __name__ == "__main__":
         args.spk_vectors = os.path.abspath(args.spk_vectors)
 
         process_dir(
-            dir_path, os.path.abspath(args.model), args.spk_model, args.spk_vectors
+            dir_path,
+            os.path.abspath(args.model),
+            args.spk_model,
+            args.spk_vectors,
+            args.reduce_noise,
         )
