@@ -14,6 +14,17 @@ const mettingBts = document.getElementById('meetings-buttons');
 
 let ws;
 
+function parseWords(words) {
+  return words
+    .map((w) => {
+      console.log(w);
+      let conf = w.conf;
+      let text = w.word;
+      return conf > 0.7 ? text : `<span class=bad-word>${text}</span>`
+    })
+    .join('&nbsp;')
+}
+
 
 resetRecording.onclick = function () {
   window.location.reload();
@@ -77,7 +88,7 @@ meetingForm.onsubmit = function (event) {
               recognizedText.className = "col-container";
               break;
             case "chunk_processed":
-              recognizedTextArea.value += `${msg.speaker}: ${msg.text}\n`;
+              recognizedText.innerHTML += `<p>(${msg.start}) ${msg.speaker}: ${msg.words.length > 0 ? parseWords(msg.words) : msg.text}</p>`
               break;
           }
         }

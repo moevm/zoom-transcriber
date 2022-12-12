@@ -1,14 +1,9 @@
 import logging
-import wave
-from pathlib import Path
 from typing import NamedTuple, Optional
 
 import noisereduce as nr
 import numpy as np
-import python_speech_features as psf
 from numpy.typing import NDArray
-from pysndfx import AudioEffectsChain
-from scipy import signal
 
 from vosk_utils.utils import get_bad_words
 
@@ -32,6 +27,7 @@ class VoskResult(NamedTuple):
     end: float
     conf: float
     text: str
+    words: Optional[list[dict]]
     speaker: str
     is_question: bool
 
@@ -75,6 +71,7 @@ def process_vosk_result(
     return VoskResult(
         start=words[0]["start"],
         end=words[-1]["end"],
+        words=words,
         conf=conf,
         text=text,
         speaker=speaker_name,
@@ -123,9 +120,6 @@ class Denoiser:
 
     def _numpy_to_bytes(self, data: NDArray) -> bytes:
         return data.astype(np.int16).tobytes()
-
-    def reduce_noise_power(self, y):
-        return signal.medfilt(y, 3)
 
     def denoise_audio_chunk_raw(self, audio: bytes) -> bytes:
         audio_chunk = self._bytes_audio_to_numpy(audio)
