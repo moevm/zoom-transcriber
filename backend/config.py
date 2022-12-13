@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 
 # url where vosk websocket server is started
-VOSK_SERVER_WS_URL = os.getenv("VOSK_SERVER_WS_URL", "ws://localhost:2700")
+VOSK_SERVER_WS_URL = os.getenv("VOSK_SERVER_WS_URL", "ws://127.0.0.1:2700")
 # url to mongodb
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017")
 # name of mongo database
 DB_NAME = os.getenv("MONGO_VOSK_DB_NAME", "nir-zoom")
 # name for collection with speaker records

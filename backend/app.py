@@ -538,6 +538,8 @@ async def meeting_audio_websocket_processing(
                             "type": "chunk_processed",
                             "speaker": vosk_res.speaker,
                             "text": vosk_res.text,
+                            "start": vosk_res.start,
+                            "words": vosk_res.words,
                         }
                     )
 
@@ -563,11 +565,14 @@ def is_close(a, b):
     return speakers_eq and time_diff_eq
 
 
-def merge(a, b):
+def merge(a: dict, b: dict):
+    combined_words = a.get("words", []) + b.get("words", [])
+
     return {
         "start": a["start"],
         "end": b["end"],
         "text": " ".join((a["text"], b["text"])).strip(),
+        "words": combined_words,
         "conf": (a["conf"] + b["conf"]) / 2,
         "speaker": a["speaker"],
         "is_question": a["is_question"],
@@ -584,19 +589,18 @@ async def process_export_meeting(meeting_id: str):
         ]
     )
 
-    questions = []
-    q_phrases = 0
+    records = []
+
     async for record in meeting_records:
-        if not questions or not is_close(questions[-1], record):
-            if record["is_question"]:
-                questions.append(record)
-                q_phrases = 0
+        if not records or not is_close(records[-1], record):
+            records.append(record)
+        else:
+            records[-1] = merge(records[-1], record)
 
-        elif q_phrases <= 5:
-            questions[-1] = merge(questions[-1], record)
-            q_phrases += 1
+    for r in records:
+        r["words"] = json.dumps(r["words"], ensure_ascii=False)
 
-    return questions
+    return records
 
 
 def create_csv_content(headers, rows) -> str:
@@ -658,15 +662,24 @@ async def export_meeting(meeting_id: str):
     meeting_data["selected_speakers"] = "|".join(meeting_data["selected_speakers"])
     metadata_csv_io = create_csv_content(metadata_headers, [meeting_data])
 
-    meeting_questions = await process_export_meeting(meeting_id)
-    questions_csv_headers = ["speaker", "text", "start", "end", "conf"]
+    meeting_records = await process_export_meeting(meeting_id)
 
-    questions_csv_io = create_csv_content(questions_csv_headers, meeting_questions)
+    records_csv_headers = [
+        "speaker",
+        "text",
+        "start",
+        "end",
+        "conf",
+        "is_question",
+        "words",
+    ]
+
+    records_csv_io = create_csv_content(records_csv_headers, meeting_records)
 
     return zipfiles(
         meeting_id,
         {
             "metadata.csv": metadata_csv_io,
-            "questions.csv": questions_csv_io,
+            "records.csv": records_csv_io,
         },
     )

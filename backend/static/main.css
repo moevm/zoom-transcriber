@@ -49,3 +49,8 @@ table {
     border-collapse: collapse;
     width: 100%;
 }
+
+.bad-word {
+    color: red;
+    font-weight: bold;
+}
