@@ -12,7 +12,8 @@ services:
       - .env
     ports:
       - "3030:3030"
-    # volumes: # - /etc/timezone:/etc/timezone:ro
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - mongodb
       - vosk-ru-server
@@ -22,7 +23,8 @@ services:
     restart: always
     environment:
       - VOSK_SHOW_WORDS=true
-    # volumes: # - /etc/timezone:/etc/timezone:ro
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "2700:2700"
 
@@ -31,4 +33,4 @@ services:
     restart: always
     volumes:
       - ./mongodb/data:/data/db
-      # - /etc/timezone:/etc/timezone:ro
+      - /etc/timezone:/etc/timezone:ro
