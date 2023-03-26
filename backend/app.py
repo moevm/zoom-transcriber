@@ -441,7 +441,7 @@ async def spk_websocket_processing(
     socket: WebSocket,
     speaker_data: dict = Depends(get_spk_cookie_data_ws),
 ):
-    denoiser = Denoiser(samplerate=16000, channels=1)
+    # denoiser = Denoiser(samplerate=16000, channels=1)
     speaker_id = speaker_data["id"]
 
     config = {"config": {"sample_rate": 16000}}
@@ -453,7 +453,7 @@ async def spk_websocket_processing(
         try:
             while True:
                 data = await socket.receive_bytes()
-                data = denoiser(data)
+                # data = denoiser(data)
                 await vosk_server.send(data)
                 raw_data = await vosk_server.recv()
                 data = json.loads(raw_data)
@@ -480,7 +480,7 @@ async def spk_websocket_processing(
 async def meeting_audio_websocket_processing(
     socket: WebSocket, meeting_data: dict = Depends(get_meeting_cookie_data_ws)
 ):
-    denoiser = Denoiser(samplerate=16000, channels=1)
+    # denoiser = Denoiser(samplerate=16000, channels=1)
     loop = asyncio.get_running_loop()
     meeting_id = meeting_data["id"]
     meeting = await sessions_col.find_one(
@@ -517,7 +517,7 @@ async def meeting_audio_websocket_processing(
         try:
             while True:
                 data = await socket.receive_bytes()
-                data = denoiser(data)
+                # data = denoiser(data)
                 await vosk_server.send(data)
 
                 raw_data = await vosk_server.recv()

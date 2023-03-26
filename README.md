@@ -8,12 +8,15 @@ Web application built with `Python3.10` and `Vosk` for transcribing audio from m
 - export of finished audio sessions (metadata + detected questions)
 
 ## Requirements
-
+### Vosk prototype
 Docker, x86_64/amd64 architecture, 16+ GB RAM (vosk server models use at least 8 GB)
 
 For manual run - Python3.10, installed MongoDB, Vosk Server, and _optionally Node_, if you wish to rebuild js bundles
 
-## Running web app
+### Whisper + pyannote prototype
+Python3.10
+
+## Running Vosk-based application
 
 ### env vars
 
@@ -47,7 +50,7 @@ REST endpoints docs available at `GET /docs` endpoint, navigate using browser
 
 Also app contains two websocket endpoints: `/spk/ws` and `/meeting/ws`, responsible for processing audio chunks sent from client using websockets for speaker and meeting sessions.
 
-## Using web app
+## Using Vosk-based application
 
 ### Main page
 
@@ -107,7 +110,9 @@ To export any record, just click `Export`, data will be exported in zip archive 
 3. Forbidden ("bad") words are being stored as pickled python list in `bad_words.pkl` in `vosk_utils` folder, if you wish to extend this list, you need to unpicke this file, extend python list with needed words and pickle it again. Bad words are being simply erased for recognized phrases
 4. Questions during export are being calculated in following algo: if rule-based algo determined the phrase is a question, at most 5 next subsequent phrases from same speaker (without interruption from other speakers) would be added to the question text. The logic behind this is that rule-based algo looking to the start of the question, but following phrases even after a pauses are usually still a part of the question, even if they don't contain explicit question keywords
 
-### CLI app
+## CLI app
+
+### Vosk-based
 Activate `virtual environment` with Python3.10, then install dependencies using:
 
 ```bash
@@ -118,6 +123,15 @@ pip install -r vosk-requirements.txt
 Use `python3.10 main.py --help` to invoke detailed description:
 
 <img width="1013" alt="image" src="https://user-images.githubusercontent.com/31539612/168869347-f4de4580-9126-4697-b69c-283525435477.png">
+
+### Whisper + pyannote
+Activate `virtual environment` with Python3.10, then install dependencies using:
+
+```bash
+pip install -r whisper-pyannote-requirements.txt
+```
+
+Use `python3.10 main_whisper.py --help` to invoke detailed description on how to run
 
 ## outdated info
 Link to screencast with first results (19.03.2022 - cli app) - https://drive.google.com/file/d/1MQdnaoQoiWK9L1MZP185QtTg8CifSfz9/view?usp=sharing
