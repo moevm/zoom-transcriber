@@ -1,6 +1,6 @@
 FROM alphacep/kaldi-vosk-server:latest
 
-ENV RUVERSION 0.22
+ENV RUVERSION 0.42
 ENV SPKVERSION 0.4
 
 RUN mkdir /opt/models \
