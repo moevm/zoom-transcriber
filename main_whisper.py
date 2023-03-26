@@ -144,15 +144,27 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument(
-        "-f", "--file", type=str, help="path to audio recording to process"
+        "-f",
+        "--file",
+        type=str,
+        required=True,
+        help="path to audio recording to process",
+    )
+
+    parser.add_argument(
+        "-m",
+        "--whisper-model",
+        type=str,
+        default="small",
+        help="type of Whisper model to run (base, small, medium, large). See https://github.com/openai/whisper#available-models-and-languages",
     )
 
     args = vars(parser.parse_args())
 
     logging.info("CUDA availability: %s", torch.cuda.is_available())
 
-    logger.info("Loading whisper model")
-    model = get_whisper_model("small")
+    logger.info("Loading whisper model `%s`", args["whisper_model"])
+    model = get_whisper_model(args["whisper_model"])
 
     logger.info("Loading pyannote.audio pipeline from './models/config.yaml'")
     pyannote_pipline = get_pyannote_pipeline("./models/config.yaml")
