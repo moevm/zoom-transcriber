@@ -102,6 +102,7 @@ def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
             "text": a["text"] + b["text"],
             "start": a["start"],
             "end": b["end"],
+            "speaker": a["speaker"],
             "is_question": a["is_question"] and b["is_question"],
         }
 
