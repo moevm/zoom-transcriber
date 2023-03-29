@@ -5,7 +5,7 @@ import noisereduce as nr
 import numpy as np
 from numpy.typing import NDArray
 
-from vosk_utils.utils import get_bad_words
+from utils import get_bad_words
 
 __all__ = ["VoskResult", "SpkResult", "process_vosk_result", "extract_spk_from_result"]
 

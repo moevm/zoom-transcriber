@@ -12,6 +12,7 @@ from typing import Callable, Optional, Union
 from vosk import KaldiRecognizer, Model, SetLogLevel, SpkModel
 
 from question_detection.ru import is_phrase_a_question
+from utils import merge_iterable
 from vosk_utils import (
     Denoiser,
     SpkResult,
@@ -19,7 +20,6 @@ from vosk_utils import (
     extract_spk_from_result,
     process_vosk_result,
 )
-from vosk_utils.utils import merge_iterable
 
 SetLogLevel(-1)
 

@@ -16,7 +16,7 @@ from whisper import Whisper, load_model
 from whisper.audio import SAMPLE_RATE, load_audio
 
 from question_detection.ru import is_phrase_a_question
-from vosk_utils.utils import merge_iterable
+from utils import merge_iterable
 
 logging.basicConfig(
     stream=sys.stdout,
