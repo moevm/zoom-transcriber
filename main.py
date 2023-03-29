@@ -11,6 +11,7 @@ from typing import Callable, Optional, Union
 
 from vosk import KaldiRecognizer, Model, SetLogLevel, SpkModel
 
+from question_detection.ru import is_phrase_a_question
 from vosk_utils import (
     Denoiser,
     SpkResult,
@@ -51,7 +52,7 @@ def _get_spk_vectors(path):
 
 
 class Loader:
-    def __init__(self, loader, path: str = None):
+    def __init__(self, loader, path: Optional[str] = None):
         self.path = path
         self.loader = loader
         self._data = None
@@ -149,14 +150,26 @@ def process_audiofile(
     return result, file_name
 
 
+def apply(segment: VoskResult) -> VoskResult:
+    segment.is_question = is_phrase_a_question(segment.text.strip())
+    return segment
+
+
 def records_close(a: VoskResult, b: VoskResult):
-    return a.speaker == b.speaker and abs(b.start - a.end) < MERGE_DIFF_SEC
+    return (
+        a.speaker == b.speaker
+        and a.is_question == b.is_question
+        and abs(b.start - a.end) < MERGE_DIFF_SEC
+    )
 
 
 def records_merge(a: VoskResult, b: VoskResult):
+    combined_words = (a.words or []) + (b.words or [])
+
     return VoskResult(
         start=a.start,
         end=b.end,
+        words=combined_words,
         text=" ".join((a.text, b.text)).strip(),
         conf=(a.conf + b.conf) / 2,
         speaker=a.speaker,
@@ -226,7 +239,9 @@ def process_dir(
 
     meeting_result.sort(key=lambda r: r.start)
 
-    meeting_result = merge_iterable(meeting_result, records_close, records_merge)
+    meeting_result = merge_iterable(
+        meeting_result, records_close, records_merge, apply=apply
+    )
 
     with open(dir_name + "/result.json", "w", encoding="utf-8") as f:
         json.dump(

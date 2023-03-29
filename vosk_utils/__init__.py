@@ -27,7 +27,7 @@ class VoskResult(NamedTuple):
     end: float
     conf: float
     text: str
-    words: Optional[list[dict]]
+    words: list[dict]
     speaker: str
     is_question: bool
 
@@ -40,22 +40,17 @@ class SpkResult(NamedTuple):
 
 def process_vosk_result(
     res: dict, spk_vectors: dict[str, list[list[float]]]
-) -> VoskResult:
+) -> Optional[VoskResult]:
     if not (words := res.get("result")):
         return
 
     text: str = res["text"]
 
-    is_question = False
-    for rule in QUESTION_RULES:
-        if rule(text):
-            is_question = True
-            break
-
     for bad_word in BAD_WORDS:
         text = text.replace(bad_word, "")
 
     speaker_name = "unknown"
+
     if "spk" in res:
         names = tuple(spk_vectors.keys())
         dists = list(
@@ -68,6 +63,7 @@ def process_vosk_result(
             speaker_name = names[np.argmin(dists)]
 
     conf = np.mean([w["conf"] for w in words])
+
     return VoskResult(
         start=words[0]["start"],
         end=words[-1]["end"],
@@ -75,7 +71,7 @@ def process_vosk_result(
         conf=conf,
         text=text,
         speaker=speaker_name,
-        is_question=is_question,
+        is_question=False,
     )
 
 
@@ -85,7 +81,7 @@ def cosine_dist(x, y):
     return 1 - np.dot(nx, ny) / (np.linalg.norm(nx) * np.linalg.norm(ny))
 
 
-def extract_spk_from_result(res: dict, *args) -> SpkResult:
+def extract_spk_from_result(res: dict, *args) -> Optional[SpkResult]:
     if "spk" not in res:
         return
 
@@ -96,7 +92,7 @@ def extract_spk_from_result(res: dict, *args) -> SpkResult:
     )
 
 
-def check_spk_distance(res: dict, spk_vectors: list[list[float]]) -> bool:
+def check_spk_distance(res: dict, spk_vectors: list[list[float]]) -> float:
     dists = [cosine_dist(res["spk"], vec) for vec in spk_vectors]
     avg_dist = np.mean(dists)
     # dists = [d <= 0.35 for d in dists]
