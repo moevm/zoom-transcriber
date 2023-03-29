@@ -15,6 +15,9 @@ from pyannote.audio import Pipeline
 from whisper import Whisper, load_model
 from whisper.audio import SAMPLE_RATE, load_audio
 
+from question_detection.ru import is_phrase_a_question
+from vosk_utils.utils import merge_iterable
+
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.INFO,
@@ -81,6 +84,34 @@ def identify_speakers(pipeline: Pipeline, audio: torch.Tensor):
             )
         )
     return speakers_data
+
+
+def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
+    if not annotated_result:
+        return {"questions": [], "segments": annotated_result}
+
+    def apply(segment: Dict) -> Dict:
+        segment["is_question"] = is_phrase_a_question(segment["text"].strip())
+        return segment
+
+    def is_close(a: Dict, b: Dict):
+        return a["speaker"] == b["speaker"] and a["is_question"] == b["is_question"]
+
+    def merge(a: Dict, b: Dict) -> Dict:
+        return {
+            "text": a["text"] + b["text"],
+            "start": a["start"],
+            "end": b["end"],
+            "is_question": a["is_question"] and b["is_question"],
+        }
+
+    annotated_with_questions = merge_iterable(
+        annotated_result, is_close=is_close, merge=merge, apply=apply
+    )
+
+    questions = [s for s in annotated_with_questions if s["is_question"]]
+
+    return {"questions": questions, "segments": annotated_with_questions}
 
 
 @measure_duration
@@ -159,6 +190,13 @@ if __name__ == "__main__":
         help="type of Whisper model to run (base, small, medium, large). See https://github.com/openai/whisper#available-models-and-languages",
     )
 
+    parser.add_argument(
+        "-r",
+        "--raw",
+        action="store_true",
+        help="flag to indicate whether to save raw annotated result (no question detection, no merge phrases) alonside the processed one or not",
+    )
+
     args = vars(parser.parse_args())
 
     logging.info("CUDA availability: %s", torch.cuda.is_available())
@@ -183,16 +221,27 @@ if __name__ == "__main__":
         transribed_data, speaker_invervals
     )
 
+    q_duration, final_result = extract_questions_and_merge(
+        annotated_result=annotated_result
+    )
+
     dir_name = os.path.dirname(full_path)
     file_name, _ = os.path.splitext(os.path.basename(full_path))
     result_json = os.path.join(dir_name, f"{file_name}.json")
+    result_raw_json = os.path.join(dir_name, f"{file_name}_raw.json")
 
     with open(result_json, "w") as f:
-        json.dump(annotated_result, f, indent=2, ensure_ascii=False)
+        json.dump(final_result, f, indent=2, ensure_ascii=False)
 
     logger.info("All done! Saved result to %s", result_json)
+
+    if args["raw"]:
+        with open(result_raw_json, "w") as f:
+            json.dump(annotated_result, f, indent=2, ensure_ascii=False)
+
+        logger.info("Saved raw result to %s", result_json)
 
     print("Time taken:")
     print(f"Transcribing - {str(tr_duration)}")
     print(f"Speaker diarization - {str(sp_duration)}")
-    print(f"Annotating - {str(an_duration)}")
+    print(f"Annotating and question extraction - {str(an_duration + q_duration)}")

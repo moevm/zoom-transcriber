@@ -37,6 +37,7 @@ from backend.config import (
 )
 from backend.db import sessions_col, speakers_col
 from backend.logging_utils import setup_logging
+from question_detection.ru import is_phrase_a_question
 from vosk_utils import Denoiser, extract_spk_from_result, process_vosk_result
 
 setup_logging()
@@ -559,10 +560,16 @@ async def meeting_audio_websocket_processing(
                 )
 
 
+def apply(segment):
+    segment["is_question"] = is_phrase_a_question(segment["text"].strip())
+    return segment
+
+
 def is_close(a, b):
+    q_eq = a["is_question"] == b["is_question"]
     speakers_eq = a["speaker"] == b["speaker"]
     time_diff_eq = abs(b["start"] - a["end"]) < MERGE_DIFF_SEC
-    return speakers_eq and time_diff_eq
+    return speakers_eq and q_eq and time_diff_eq
 
 
 def merge(a: dict, b: dict):
@@ -575,7 +582,7 @@ def merge(a: dict, b: dict):
         "words": combined_words,
         "conf": (a["conf"] + b["conf"]) / 2,
         "speaker": a["speaker"],
-        "is_question": a["is_question"],
+        "is_question": a["is_question"] and b["is_question"],
     }
 
 
@@ -591,7 +598,10 @@ async def process_export_meeting(meeting_id: str):
 
     records = []
 
+    # not using merge_iterable because merge_iterbale is sync
     async for record in meeting_records:
+        record = apply(record)
+
         if not records or not is_close(records[-1], record):
             records.append(record)
         else:
