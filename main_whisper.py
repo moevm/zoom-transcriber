@@ -40,7 +40,7 @@ def _is_overlapping(a, b, th=0.35):
     s2, e2 = b
     if (s2 >= s1 and e2 <= s1) or (s1 >= s2 and e1 <= e2):
         return True
-    return s2 <= e1 and e2 >= s1
+    return (s2 <= e1) and (e2 >= s1)
 
 
 def measure_duration(f):
@@ -86,6 +86,7 @@ def identify_speakers(pipeline: Pipeline, audio: torch.Tensor):
     return speakers_data
 
 
+@measure_duration
 def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
     if not annotated_result:
         return {"questions": [], "segments": annotated_result}
@@ -95,7 +96,7 @@ def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
         return segment
 
     def is_close(a: Dict, b: Dict):
-        return a["speaker"] == b["speaker"] and a["is_question"] == b["is_question"]
+        return (a["speaker"] == b["speaker"]) and (a["is_question"] == b["is_question"])
 
     def merge(a: Dict, b: Dict) -> Dict:
         return {
@@ -240,9 +241,9 @@ if __name__ == "__main__":
         with open(result_raw_json, "w") as f:
             json.dump(annotated_result, f, indent=2, ensure_ascii=False)
 
-        logger.info("Saved raw result to %s", result_json)
+        logger.info("Saved raw result to %s", result_raw_json)
 
     print("Time taken:")
-    print(f"Transcribing - {str(tr_duration)}")
-    print(f"Speaker diarization - {str(sp_duration)}")
-    print(f"Annotating and question extraction - {str(an_duration + q_duration)}")
+    print(f"Transcribing - {tr_duration}")
+    print(f"Speaker diarization - {sp_duration}")
+    print(f"Annotating and question extraction - {(an_duration + q_duration)}")
