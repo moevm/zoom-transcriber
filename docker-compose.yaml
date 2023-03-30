@@ -19,7 +19,9 @@ services:
       - vosk-ru-server
 
   vosk-ru-server:
-    image: supersolik/vosk-ru-spk:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.vosk-spk-ru
     restart: always
     environment:
       - VOSK_SHOW_WORDS=true
