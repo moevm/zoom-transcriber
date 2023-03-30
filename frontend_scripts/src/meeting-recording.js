@@ -1,4 +1,4 @@
-const { MicrophoneStream } = require('microphone-stream');
+const MicrophoneStream = require('microphone-stream').default;
 const { convertFloat32ArrayToInt16Array } = require("./float32-to-int16");
 
 const startRecording = document.getElementById('start-recording');
