@@ -26,6 +26,9 @@ logging.basicConfig(
 logger = logging.getLogger(__file__)
 
 
+MERGE_DIFF_SEC = 2
+
+
 @lru_cache(maxsize=None)
 def get_pyannote_pipeline(config_path: str) -> Pipeline:
     return Pipeline.from_pretrained(config_path)
@@ -96,7 +99,15 @@ def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
         return segment
 
     def is_close(a: Dict, b: Dict):
-        return (a["speaker"] == b["speaker"]) and (a["is_question"] == b["is_question"])
+        first_scenario = (a["speaker"] == b["speaker"]) and (
+            a["is_question"] == b["is_question"]
+        )
+        second_scenario = (
+            (a["speaker"] == b["speaker"])
+            and a["is_question"]
+            and (b["start"] - a["end"]) <= MERGE_DIFF_SEC
+        )
+        return first_scenario or second_scenario
 
     def merge(a: Dict, b: Dict) -> Dict:
         return {
@@ -104,7 +115,7 @@ def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
             "start": a["start"],
             "end": b["end"],
             "speaker": a["speaker"],
-            "is_question": a["is_question"] and b["is_question"],
+            "is_question": a["is_question"] or b["is_question"],
         }
 
     annotated_with_questions = merge_iterable(

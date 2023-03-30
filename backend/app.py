@@ -569,7 +569,9 @@ def is_close(a, b):
     q_eq = a["is_question"] == b["is_question"]
     speakers_eq = a["speaker"] == b["speaker"]
     time_diff_eq = abs(b["start"] - a["end"]) < MERGE_DIFF_SEC
-    return speakers_eq and q_eq and time_diff_eq
+    first_scenario = q_eq and speakers_eq
+    second_scenario = speakers_eq and a["is_question"] and time_diff_eq
+    return first_scenario or second_scenario
 
 
 def merge(a: dict, b: dict):
@@ -582,7 +584,7 @@ def merge(a: dict, b: dict):
         "words": combined_words,
         "conf": (a["conf"] + b["conf"]) / 2,
         "speaker": a["speaker"],
-        "is_question": a["is_question"] and b["is_question"],
+        "is_question": a["is_question"] or b["is_question"],
     }
 
 

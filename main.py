@@ -24,7 +24,7 @@ from vosk_utils import (
 SetLogLevel(-1)
 
 NUM_ALTERNATIVES = 4
-MERGE_DIFF_SEC = 0.75
+MERGE_DIFF_SEC = 2
 
 
 @lru_cache(maxsize=5)
@@ -156,11 +156,11 @@ def apply(segment: VoskResult) -> VoskResult:
 
 
 def records_close(a: VoskResult, b: VoskResult):
-    return (
-        a.speaker == b.speaker
-        and a.is_question == b.is_question
-        and abs(b.start - a.end) < MERGE_DIFF_SEC
+    first_scenario = a.speaker == b.speaker and a.is_question == b.is_question
+    second_scenario = (
+        a.speaker == b.speaker and a.is_question and (b.start - a.end) <= MERGE_DIFF_SEC
     )
+    return first_scenario or second_scenario
 
 
 def records_merge(a: VoskResult, b: VoskResult):
@@ -173,7 +173,7 @@ def records_merge(a: VoskResult, b: VoskResult):
         text=" ".join((a.text, b.text)).strip(),
         conf=(a.conf + b.conf) / 2,
         speaker=a.speaker,
-        is_question=a.is_question and b.is_question,
+        is_question=a.is_question or b.is_question,
     )
 
 

@@ -18,5 +18,5 @@ MIN_SPK_VECTORS_NUM = int(os.getenv("MIN_SPK_VECTORS_NUM", "8"))
 # value restricting min border of ratio = (num good speaker features / num all speaker features)
 SPK_GOOD_RATIO = float(os.getenv("SPK_GOOD_RATIO", "0.65"))
 # value in secs - how close should be two phrases to be combined into one
-MERGE_DIFF_SEC = float(os.getenv("MERGE_DIFF_SEC", "2.5"))
+MERGE_DIFF_SEC = float(os.getenv("MERGE_DIFF_SEC", "2.0"))
 ROOT_DIR = Path(__file__).absolute().parent
