@@ -1,4 +1,5 @@
-const MicrophoneStream = require('microphone-stream').default;
+const { MicrophoneStream }= require('microphone-stream');
+const { convertFloat32ArrayToInt16Array }= require('./float32-to-int16');
 
 const startRecording = document.getElementById('start-recording');
 const stopRecording = document.getElementById('stop-recording');
@@ -97,7 +98,7 @@ startRecording.onclick = function () {
     // (This actually just creates a new DataView - the underlying audio data is not copied or modified.)
 
     const rawChunk = MicrophoneStream.toRaw(chunk)
-    ws.send(Int16Array.from(rawChunk, x => x * 32767));
+    ws.send(convertFloat32ArrayToInt16Array(rawChunk));
 
     // note: if you set options.objectMode=true, the `data` event will output AudioBuffers instead of Buffers
   });
