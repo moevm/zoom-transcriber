@@ -9,5 +9,7 @@ RUN pip install -U pip setuptools && pip install -r /app/requirements.txt
 
 COPY ./backend /app/backend
 COPY ./vosk_utils /app/vosk_utils
+COPY ./utils /app/utils
+COPY ./question_detection /app/question_detection
 
 CMD gunicorn backend:app --bind=0.0.0.0:3030 -w 4 -k uvicorn.workers.UvicornWorker
