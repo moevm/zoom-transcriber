@@ -210,6 +210,13 @@ if __name__ == "__main__":
         help="flag to indicate whether to save raw annotated result (no question detection, no merge phrases) alonside the processed one or not",
     )
 
+    parser.add_argument(
+        "-n",
+        "--no-speakers",
+        action="store_true",
+        help="flag to indicate whether to do speaker diarization or not",
+    )
+
     args = vars(parser.parse_args())
 
     logging.info("CUDA availability: %s", torch.cuda.is_available())
@@ -217,17 +224,27 @@ if __name__ == "__main__":
     logger.info("Loading whisper model `%s`", args["whisper_model"])
     model = get_whisper_model(args["whisper_model"])
 
-    logger.info("Loading pyannote.audio pipeline from './models/config.yaml'")
-    pyannote_pipline = get_pyannote_pipeline("./models/config.yaml")
+    steps_reports = []
+
+    if not args["no_speakers"]:
+        logger.info("Loading pyannote.audio pipeline from './models/config.yaml'")
+        pyannote_pipline = get_pyannote_pipeline("./models/config.yaml")
 
     logger.info("Preparing input recording %s", args["file"])
     full_path, audio = prepare_audio_file(args["file"])
 
     logger.info("Transcribing input audio...")
-    tr_duration, transribed_data = transcribe_recording(model, audio)
+    tr_duration, transribed_data = transcribe_recording(
+        model, audio, no_speech_th=0.765
+    )
+    steps_reports.append(f"Transcribing - {tr_duration}")
 
-    logger.info("Identifying speakers...")
-    sp_duration, speaker_invervals = identify_speakers(pyannote_pipline, audio)
+    if not args["no_speakers"]:
+        logger.info("Identifying speakers...")
+        sp_duration, speaker_invervals = identify_speakers(pyannote_pipline, audio)
+        steps_reports.append(f"Speaker diarization - {sp_duration}")
+    else:
+        speaker_invervals = []
 
     logger.info("Preparing the final result...")
     an_duration, annotated_result = annotate_transcribed_result(
@@ -238,10 +255,14 @@ if __name__ == "__main__":
         annotated_result=annotated_result
     )
 
+    steps_reports.append(
+        f"Annotating and question extraction - {(an_duration + q_duration)}"
+    )
+
     dir_name = os.path.dirname(full_path)
     file_name, _ = os.path.splitext(os.path.basename(full_path))
-    result_json = os.path.join(dir_name, f"{file_name}.json")
-    result_raw_json = os.path.join(dir_name, f"{file_name}_raw.json")
+    result_json = os.path.join(dir_name, f"{file_name}_whisper_result.json")
+    result_raw_json = os.path.join(dir_name, f"{file_name}_whisper_result_raw.json")
 
     with open(result_json, "w") as f:
         json.dump(final_result, f, indent=2, ensure_ascii=False)
@@ -255,6 +276,5 @@ if __name__ == "__main__":
         logger.info("Saved raw result to %s", result_raw_json)
 
     print("Time taken:")
-    print(f"Transcribing - {tr_duration}")
-    print(f"Speaker diarization - {sp_duration}")
-    print(f"Annotating and question extraction - {(an_duration + q_duration)}")
+    for step_report in steps_reports:
+        print(step_report)

@@ -151,8 +151,15 @@ def process_audiofile(
 
 
 def apply(segment: VoskResult) -> VoskResult:
-    segment.is_question = is_phrase_a_question(segment.text.strip())
-    return segment
+    return VoskResult(
+        start=segment.start,
+        end=segment.end,
+        words=segment.words,
+        conf=segment.conf,
+        text=segment.text,
+        speaker=segment.speaker,
+        is_question=is_phrase_a_question(segment.text.strip()),
+    )
 
 
 def records_close(a: VoskResult, b: VoskResult):
@@ -207,10 +214,11 @@ def process_dir(
     spk_model_path: str = None,
     spk_vectors_path: str = None,
     reduce_noise: bool = False,
+    patterns: list[str] = ["*.m4a", "*.mp3", "*.wav"],
 ) -> None:
     dir_path = Path(dir_path_raw).absolute()
     dir_name = dir_path.stem
-    audio_file_paths = dir_path.glob("*.m4a")
+    audio_file_paths = (f for pattern in patterns for f in dir_path.glob(pattern))
     os.makedirs(dir_name, exist_ok=True)
     print(f"Started processing directory {dir_name}")
     start_time = time.time()
@@ -257,10 +265,11 @@ def process_extract_spk_dir(
     model_path: str,
     spk_model_path: str = None,
     reduce_noise: bool = False,
+    patterns: list[str] = ["*.m4a", "*.mp3", "*.wav"],
 ) -> None:
     dir_path = Path(dir_path_raw).absolute()
     dir_name = dir_path.stem
-    audio_file_paths = dir_path.glob("*.m4a")
+    audio_file_paths = (f for pattern in patterns for f in dir_path.glob(pattern))
     os.makedirs(dir_name, exist_ok=True)
     print(f"Started processing directory {dir_name} in spk mode")
     start_time = time.time()
