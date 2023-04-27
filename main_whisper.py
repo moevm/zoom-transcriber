@@ -122,9 +122,7 @@ def extract_questions_and_merge(annotated_result: List[Dict]) -> Dict:
         annotated_result, is_close=is_close, merge=merge, apply=apply
     )
 
-    questions = [s for s in annotated_with_questions if s["is_question"]]
-
-    return {"questions": questions, "segments": annotated_with_questions}
+    return annotated_with_questions
 
 
 @measure_duration
@@ -263,6 +261,9 @@ if __name__ == "__main__":
     file_name, _ = os.path.splitext(os.path.basename(full_path))
     result_json = os.path.join(dir_name, f"{file_name}_whisper_result.json")
     result_raw_json = os.path.join(dir_name, f"{file_name}_whisper_result_raw.json")
+    result_speaker_raw_json = os.path.join(
+        dir_name, f"{file_name}_pyannote_speaker_result_raw.json"
+    )
 
     with open(result_json, "w") as f:
         json.dump(final_result, f, indent=2, ensure_ascii=False)
@@ -273,7 +274,12 @@ if __name__ == "__main__":
         with open(result_raw_json, "w") as f:
             json.dump(annotated_result, f, indent=2, ensure_ascii=False)
 
-        logger.info("Saved raw result to %s", result_raw_json)
+        logger.info("Saved raw whisper result to %s", result_raw_json)
+
+        with open(result_speaker_raw_json, "w") as f:
+            json.dump(speaker_invervals, f, indent=2, ensure_ascii=False)
+
+        logger.info("Saved raw pyannote speaker result to %s", result_speaker_raw_json)
 
     print("Time taken:")
     for step_report in steps_reports:

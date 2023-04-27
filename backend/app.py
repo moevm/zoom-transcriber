@@ -683,7 +683,6 @@ async def export_meeting(meeting_id: str):
         "end",
         "conf",
         "is_question",
-        "words",
     ]
 
     records_csv_io = create_csv_content(records_csv_headers, meeting_records)
@@ -692,6 +691,6 @@ async def export_meeting(meeting_id: str):
         meeting_id,
         {
             "metadata.csv": metadata_csv_io,
-            "records.csv": records_csv_io,
+            "transcription.csv": records_csv_io,
         },
     )
